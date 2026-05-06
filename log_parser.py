@@ -119,7 +119,7 @@ class LogParser:
         search: Optional[str] = None,
     ) -> dict:
         """Return a paginated slice of the index with optional filtering."""
-        filtered = self._filter_entries(model, time_from, time_to, search)
+        filtered = self.filter_entries(model, time_from, time_to, search)
 
         total = len(filtered)
         start = (page - 1) * per_page
@@ -138,7 +138,7 @@ class LogParser:
             "entries": entries,
         }
 
-    def _filter_entries(
+    def filter_entries(
         self,
         model: Optional[str] = None,
         time_from: Optional[str] = None,

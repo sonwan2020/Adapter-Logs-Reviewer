@@ -16,7 +16,10 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB
 parser = LogParser()
 _log_file = os.path.join(os.path.dirname(__file__), "resources", "logs.jsonl")
 if os.path.isfile(_log_file):
-    parser.load(_log_file)
+    try:
+        parser.load(_log_file)
+    except Exception:
+        pass  # Gracefully handle corrupt/unreadable default log file
 
 
 @app.route("/")
@@ -142,6 +145,12 @@ def api_export():
         as_attachment=True,
         download_name="export.jsonl",
     )
+
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    """Handle file upload exceeding MAX_CONTENT_LENGTH."""
+    return jsonify({"error": "File too large. Maximum size is 16 MB."}), 413
 
 
 if __name__ == "__main__":

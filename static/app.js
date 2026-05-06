@@ -33,7 +33,8 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const resp = await fetch("/api/models");
             if (!resp.ok) return;
-            const models = await resp.json();
+            const data = await resp.json();
+            const models = data.models || [];
             models.forEach((m) => {
                 const opt = document.createElement("option");
                 opt.value = m;
@@ -86,16 +87,22 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!input.files.length) return;
             const formData = new FormData();
             formData.append("file", input.files[0]);
+            btnUpload.disabled = true;
+            btnUpload.textContent = "Uploading...";
             try {
                 const resp = await fetch("/api/upload", { method: "POST", body: formData });
-                if (!resp.ok) throw new Error(resp.statusText);
+                const data = await resp.json().catch(() => null);
+                if (!resp.ok) throw new Error(data?.error || resp.statusText);
                 // Reload models and entries
                 filterModel.innerHTML = '<option value="">All Models</option>';
                 await loadModels();
                 resetAndReload();
             } catch (err) {
                 console.error("Upload failed:", err);
-                alert("Upload failed: " + err.message);
+                showError("Upload failed: " + err.message);
+            } finally {
+                btnUpload.disabled = false;
+                btnUpload.textContent = "Upload";
             }
         });
         input.click();
@@ -108,13 +115,61 @@ document.addEventListener("DOMContentLoaded", () => {
         if (filterTimeFrom.value) params.set("time_from", filterTimeFrom.value);
         if (filterTimeTo.value) params.set("time_to", filterTimeTo.value);
         if (filterSearch.value.trim()) params.set("search", filterSearch.value.trim());
-        window.location.href = "/api/export?" + params.toString();
+        btnExport.disabled = true;
+        btnExport.textContent = "Exporting...";
+        // Use fetch to detect errors, then trigger download
+        fetch("/api/export?" + params.toString())
+            .then((resp) => {
+                if (!resp.ok) throw new Error("Export failed");
+                return resp.blob();
+            })
+            .then((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "export.jsonl";
+                a.click();
+                URL.revokeObjectURL(url);
+            })
+            .catch((err) => {
+                showError("Export failed: " + err.message);
+            })
+            .finally(() => {
+                btnExport.disabled = false;
+                btnExport.textContent = "Export";
+            });
     });
 
     function escapeHtml(str) {
         const div = document.createElement("div");
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    function showError(message) {
+        // Show a toast-like error at the top of detail panel
+        const existing = document.querySelector(".toast-error");
+        if (existing) existing.remove();
+        const toast = document.createElement("div");
+        toast.className = "toast-error";
+        toast.textContent = message;
+        document.querySelector(".app-container").appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    }
+
+    function showEmptyState() {
+        let el = entryList.querySelector(".empty-state");
+        if (!el) {
+            el = document.createElement("div");
+            el.className = "empty-state";
+            el.textContent = "No entries found.";
+            entryList.insertBefore(el, loadMoreBtn);
+        }
+    }
+
+    function hideEmptyState() {
+        const el = entryList.querySelector(".empty-state");
+        if (el) el.remove();
     }
 
     // Tab switching
@@ -163,24 +218,40 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadEntries() {
         if (loading) return;
         loading = true;
+        loadMoreBtn.textContent = "Loading...";
+        loadMoreBtn.classList.add("loading");
         try {
             const resp = await fetch(`/api/entries?${getFilterParams()}`);
-            if (!resp.ok) throw new Error(resp.statusText);
+            if (!resp.ok) {
+                const errData = await resp.json().catch(() => null);
+                throw new Error(errData?.error || resp.statusText);
+            }
             const data = await resp.json();
             totalEntries = data.total;
-            data.entries.forEach((entry) => {
-                entryList.insertBefore(createEntryItem(entry), loadMoreBtn);
-            });
+
+            if (data.entries.length === 0 && currentPage === 1) {
+                showEmptyState();
+            } else {
+                hideEmptyState();
+                data.entries.forEach((entry) => {
+                    entryList.insertBefore(createEntryItem(entry), loadMoreBtn);
+                });
+            }
+
             currentPage++;
             const loaded = entryList.querySelectorAll(".entry-item").length;
             if (loaded >= totalEntries) {
                 loadMoreBtn.style.display = "none";
+            } else {
+                loadMoreBtn.textContent = "Load More";
             }
         } catch (err) {
             console.error("Failed to load entries:", err);
             loadMoreBtn.textContent = "Failed to load — click to retry";
+            showError("Failed to load entries: " + err.message);
         } finally {
             loading = false;
+            loadMoreBtn.classList.remove("loading");
         }
     }
 
@@ -189,14 +260,17 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".entry-item").forEach((el) => {
             el.classList.toggle("selected", el.dataset.id == id);
         });
-        tabContent.innerHTML = '<p class="placeholder">Loading...</p>';
+        tabContent.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading entry...</p></div>';
         try {
             const resp = await fetch(`/api/entries/${id}`);
-            if (!resp.ok) throw new Error(resp.statusText);
+            if (!resp.ok) {
+                const errData = await resp.json().catch(() => null);
+                throw new Error(errData?.error || resp.statusText);
+            }
             currentEntry = await resp.json();
             renderActiveTab();
         } catch (err) {
-            tabContent.innerHTML = '<p class="placeholder">Failed to load entry.</p>';
+            tabContent.innerHTML = `<div class="error-message">Failed to load entry: ${escapeHtml(err.message)}</div>`;
         }
     }
 
@@ -226,6 +300,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const container = document.createElement("div");
         container.className = "request-comparison";
 
+        const data = entry.data || entry;
+
         // Toggle button
         const toggleBtn = document.createElement("button");
         toggleBtn.className = "btn btn-secondary raw-json-toggle";
@@ -240,12 +316,26 @@ document.addEventListener("DOMContentLoaded", () => {
         const leftPanel = document.createElement("div");
         leftPanel.className = "split-panel";
         leftPanel.innerHTML = '<h3 class="panel-title">Anthropic Request</h3>';
-        leftPanel.appendChild(renderAnthropicMessages(entry.anthropicRequest));
+        if (data.anthropicRequest) {
+            leftPanel.appendChild(renderAnthropicMessages(data.anthropicRequest));
+        } else {
+            const empty = document.createElement("p");
+            empty.className = "placeholder";
+            empty.textContent = "No Anthropic request data available.";
+            leftPanel.appendChild(empty);
+        }
 
         const rightPanel = document.createElement("div");
         rightPanel.className = "split-panel";
         rightPanel.innerHTML = '<h3 class="panel-title">OpenAI Request</h3>';
-        rightPanel.appendChild(renderOpenAIMessages(entry.openaiRequest));
+        if (data.openaiRequest) {
+            rightPanel.appendChild(renderOpenAIMessages(data.openaiRequest));
+        } else {
+            const empty = document.createElement("p");
+            empty.className = "placeholder";
+            empty.textContent = "No OpenAI request data available.";
+            rightPanel.appendChild(empty);
+        }
 
         splitView.appendChild(leftPanel);
         splitView.appendChild(rightPanel);
@@ -262,14 +352,14 @@ document.addEventListener("DOMContentLoaded", () => {
         rawLeft.innerHTML = '<h3 class="panel-title">Anthropic Request (Raw)</h3>';
         const preLeft = document.createElement("pre");
         preLeft.className = "raw-json";
-        preLeft.textContent = JSON.stringify(entry.anthropicRequest, null, 2);
+        preLeft.textContent = JSON.stringify(data.anthropicRequest, null, 2);
         rawLeft.appendChild(preLeft);
         const rawRight = document.createElement("div");
         rawRight.className = "split-panel";
         rawRight.innerHTML = '<h3 class="panel-title">OpenAI Request (Raw)</h3>';
         const preRight = document.createElement("pre");
         preRight.className = "raw-json";
-        preRight.textContent = JSON.stringify(entry.openaiRequest, null, 2);
+        preRight.textContent = JSON.stringify(data.openaiRequest, null, 2);
         rawRight.appendChild(preRight);
         rawSplit.appendChild(rawLeft);
         rawSplit.appendChild(rawRight);

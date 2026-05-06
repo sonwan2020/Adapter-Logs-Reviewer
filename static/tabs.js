@@ -10,7 +10,8 @@ function renderCopilotResponse(entry, tabContent, escapeHtml) {
     const container = document.createElement("div");
     container.className = "copilot-response-tab";
 
-    const sseRaw = entry.copilotResponse || "";
+    const data = entry.data || entry;
+    const sseRaw = data.copilotResponse || "";
 
     // Parse SSE lines
     let contentFragments = [];
@@ -167,7 +168,8 @@ function renderToolsTab(entry, tabContent, escapeHtml) {
     const container = document.createElement("div");
     container.className = "tools-tab";
 
-    const tools = (entry.anthropicRequest && entry.anthropicRequest.tools) || [];
+    const data = entry.data || entry;
+    const tools = (data.anthropicRequest && data.anthropicRequest.tools) || [];
 
     // Deduplicate by tool name (keep first occurrence)
     const seen = new Set();
@@ -268,7 +270,8 @@ function renderSystemPromptsTab(entry, tabContent, escapeHtml) {
     const container = document.createElement("div");
     container.className = "system-prompts-tab";
 
-    const systemPrompts = (entry.anthropicRequest && entry.anthropicRequest.system) || [];
+    const data = entry.data || entry;
+    const systemPrompts = (data.anthropicRequest && data.anthropicRequest.system) || [];
 
     // Header
     const header = document.createElement("div");

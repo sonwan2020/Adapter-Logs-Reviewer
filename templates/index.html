@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adapter Logs Reviewer</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left sidebar: filter panel + entry list -->
+        <aside class="sidebar">
+            <div class="filter-panel">
+                <h2>Filters</h2>
+                <!-- Filter controls will be added in later tasks -->
+            </div>
+            <div class="entry-list">
+                <!-- Log entries will be populated via JS -->
+            </div>
+        </aside>
+
+        <!-- Right panel: detail view with tabs -->
+        <main class="detail-panel">
+            <div class="tab-bar">
+                <button class="tab active" data-tab="request-comparison">Request Comparison</button>
+                <button class="tab" data-tab="copilot-response">Copilot Response</button>
+                <button class="tab" data-tab="tools">Tools</button>
+                <button class="tab" data-tab="system-prompts">System Prompts</button>
+                <button class="tab" data-tab="raw-json">Raw JSON</button>
+            </div>
+            <div class="tab-content">
+                <p class="placeholder">Select a log entry from the sidebar to view details.</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

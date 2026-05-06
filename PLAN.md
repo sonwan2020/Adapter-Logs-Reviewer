@@ -476,6 +476,25 @@ git log --oneline  # Summary of all commits
 
 ---
 
+## Progress Tracking
+
+| Task | Status | Summary |
+|------|--------|---------|
+| Task 1: Project Scaffolding & Flask App Setup | PENDING | — |
+| Task 2: JSONL Parsing & In-Memory Indexing | PENDING | — |
+| Task 3: Server-Side Pagination API | PENDING | — |
+| Task 4: Filtering & Search API | PENDING | — |
+| Task 5: File Upload & Export Endpoints | PENDING | — |
+| Task 6: Frontend — Sidebar & Entry List | PENDING | — |
+| Task 7: Frontend — Filter Panel | PENDING | — |
+| Task 8: Frontend — Request Comparison Tab | PENDING | — |
+| Task 9: Frontend — Copilot Response Tab | PENDING | — |
+| Task 10: Frontend — Tools Tab | PENDING | — |
+| Task 11: Frontend — System Prompts Tab & Raw JSON Tab | PENDING | — |
+| Task 12: Polish, Error Handling & Integration Testing | PENDING | — |
+
+---
+
 ## File Structure (Final)
 
 ```text

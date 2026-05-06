@@ -208,6 +208,10 @@ document.addEventListener("DOMContentLoaded", () => {
             renderCopilotResponse(currentEntry, tabContent, escapeHtml);
         } else if (activeTab === "tools") {
             renderToolsTab(currentEntry, tabContent, escapeHtml);
+        } else if (activeTab === "system-prompts") {
+            renderSystemPromptsTab(currentEntry, tabContent, escapeHtml);
+        } else if (activeTab === "raw-json") {
+            renderRawJsonTab(currentEntry, tabContent);
         } else {
             const pre = document.createElement("pre");
             pre.className = "raw-json";

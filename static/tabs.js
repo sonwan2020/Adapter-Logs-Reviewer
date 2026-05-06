@@ -260,3 +260,109 @@ function renderToolsTab(entry, tabContent, escapeHtml) {
 
     tabContent.replaceChildren(container);
 }
+
+/**
+ * Render the System Prompts tab — display system array entries with cache_control badges.
+ */
+function renderSystemPromptsTab(entry, tabContent, escapeHtml) {
+    const container = document.createElement("div");
+    container.className = "system-prompts-tab";
+
+    const systemPrompts = (entry.anthropicRequest && entry.anthropicRequest.system) || [];
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "system-prompts-header";
+    header.innerHTML = `<span class="system-prompts-count">${systemPrompts.length} system prompt${systemPrompts.length !== 1 ? "s" : ""}</span>`;
+    container.appendChild(header);
+
+    // Toggle button
+    const toggleBtn = document.createElement("button");
+    toggleBtn.className = "btn btn-secondary raw-json-toggle";
+    toggleBtn.textContent = "Show Raw JSON";
+    let showingRaw = false;
+    header.appendChild(toggleBtn);
+
+    // Deduplication check
+    const textContents = systemPrompts.map((p) => p.text || "");
+    const uniqueTexts = new Set(textContents);
+    if (uniqueTexts.size < textContents.length && textContents.length > 1) {
+        const note = document.createElement("div");
+        note.className = "dedup-note";
+        note.textContent = `Note: ${textContents.length - uniqueTexts.size} duplicate prompt(s) detected (identical text content).`;
+        container.appendChild(note);
+    }
+
+    // Formatted view
+    const formattedView = document.createElement("div");
+    formattedView.className = "system-prompts-formatted";
+
+    if (systemPrompts.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "placeholder";
+        empty.textContent = "No system prompts for this entry.";
+        formattedView.appendChild(empty);
+    } else {
+        systemPrompts.forEach((prompt, idx) => {
+            const details = document.createElement("details");
+            details.className = "system-prompt-block";
+
+            const summary = document.createElement("summary");
+            summary.className = "system-prompt-summary";
+            let summaryText = `System Prompt #${idx + 1}`;
+            if (prompt.type) summaryText += ` (${prompt.type})`;
+            summary.textContent = summaryText;
+
+            // Cache control badge
+            if (prompt.cache_control) {
+                const badge = document.createElement("span");
+                badge.className = "cache-control-badge";
+                badge.textContent = `cache: ${prompt.cache_control.type || JSON.stringify(prompt.cache_control)}`;
+                summary.appendChild(badge);
+            }
+
+            details.appendChild(summary);
+
+            const body = document.createElement("div");
+            body.className = "system-prompt-body";
+            body.textContent = prompt.text || JSON.stringify(prompt, null, 2);
+            details.appendChild(body);
+
+            formattedView.appendChild(details);
+        });
+    }
+
+    container.appendChild(formattedView);
+
+    // Raw JSON view
+    const rawView = document.createElement("div");
+    rawView.className = "raw-json-view";
+    rawView.style.display = "none";
+    const pre2 = document.createElement("pre");
+    pre2.className = "raw-json";
+    pre2.textContent = JSON.stringify(systemPrompts, null, 2);
+    rawView.appendChild(pre2);
+    container.appendChild(rawView);
+
+    toggleBtn.addEventListener("click", () => {
+        showingRaw = !showingRaw;
+        formattedView.style.display = showingRaw ? "none" : "block";
+        rawView.style.display = showingRaw ? "block" : "none";
+        toggleBtn.textContent = showingRaw ? "Show Formatted" : "Show Raw JSON";
+    });
+
+    tabContent.replaceChildren(container);
+}
+
+/**
+ * Render the Raw JSON tab — complete entry as pretty-printed JSON.
+ */
+function renderRawJsonTab(entry, tabContent) {
+    const container = document.createElement("div");
+    container.className = "raw-json-tab";
+    const pre = document.createElement("pre");
+    pre.className = "raw-json";
+    pre.textContent = JSON.stringify(entry, null, 2);
+    container.appendChild(pre);
+    tabContent.replaceChildren(container);
+}

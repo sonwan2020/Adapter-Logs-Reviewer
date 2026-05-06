@@ -480,18 +480,18 @@ git log --oneline  # Summary of all commits
 
 | Task | Status | Summary |
 |------|--------|---------|
-| Task 1: Project Scaffolding & Flask App Setup | PENDING | — |
-| Task 2: JSONL Parsing & In-Memory Indexing | PENDING | — |
-| Task 3: Server-Side Pagination API | PENDING | — |
-| Task 4: Filtering & Search API | PENDING | — |
-| Task 5: File Upload & Export Endpoints | PENDING | — |
-| Task 6: Frontend — Sidebar & Entry List | PENDING | — |
-| Task 7: Frontend — Filter Panel | PENDING | — |
-| Task 8: Frontend — Request Comparison Tab | PENDING | — |
-| Task 9: Frontend — Copilot Response Tab | PENDING | — |
-| Task 10: Frontend — Tools Tab | PENDING | — |
-| Task 11: Frontend — System Prompts Tab & Raw JSON Tab | PENDING | — |
-| Task 12: Polish, Error Handling & Integration Testing | PENDING | — |
+| Task 1: Project Scaffolding & Flask App Setup | DONE | Flask app, two-panel layout, responsive CSS, tab switching |
+| Task 2: JSONL Parsing & In-Memory Indexing | DONE | Lazy parser with offset index, MD5 dedup, malformed line handling |
+| Task 3: Server-Side Pagination API | DONE | GET /api/entries with pagination, GET /api/entries/<id> with lazy load |
+| Task 4: Filtering & Search API | DONE | Model/time/search filters with AND logic, GET /api/models |
+| Task 5: File Upload & Export Endpoints | DONE | POST /api/upload with validation, GET /api/export with filters |
+| Task 6: Frontend — Sidebar & Entry List | DONE | AJAX entry list, pagination, click-to-detail, XSS-safe |
+| Task 7: Frontend — Filter Panel | DONE | Collapsible filters, model dropdown, search, upload, export |
+| Task 8: Frontend — Request Comparison Tab | DONE | Split view, role colors, thinking merge, tool blocks, raw toggle |
+| Task 9: Frontend — Copilot Response Tab | DONE | SSE parsing, delta merging, reasoning/content split, tool calls |
+| Task 10: Frontend — Tools Tab | DONE | Collapsible tool blocks, dedup by name, schema display, raw toggle |
+| Task 11: Frontend — System Prompts Tab & Raw JSON Tab | DONE | System prompts with cache_control badges, dedup note, raw JSON tab |
+| Task 12: Polish, Error Handling & Integration Testing | DONE | Loading states, toast errors, edge cases, 413 handler |
 
 ---
 

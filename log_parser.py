@@ -109,16 +109,26 @@ class LogParser:
             "unique_system_prompts": len(self._system_store),
         }
 
-    def get_index(self, page: int = 1, per_page: int = 50) -> dict:
-        """Return a paginated slice of the index."""
-        total = len(self._index)
+    def get_index(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        model: Optional[str] = None,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> dict:
+        """Return a paginated slice of the index with optional filtering."""
+        filtered = self._filter_entries(model, time_from, time_to, search)
+
+        total = len(filtered)
         start = (page - 1) * per_page
         end = min(start + per_page, total)
 
         entries = []
-        for i in range(start, end):
-            entry = self._index[i].copy()
-            entry["id"] = i  # 0-based ID for API use
+        for idx, original_id in filtered[start:end]:
+            entry = idx.copy()
+            entry["id"] = original_id
             entries.append(entry)
 
         return {
@@ -127,6 +137,104 @@ class LogParser:
             "per_page": per_page,
             "entries": entries,
         }
+
+    def _filter_entries(
+        self,
+        model: Optional[str] = None,
+        time_from: Optional[str] = None,
+        time_to: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> list[tuple[dict, int]]:
+        """Filter index entries by model, time range, and full-text search."""
+        results: list[tuple[dict, int]] = []
+
+        for i, entry in enumerate(self._index):
+            # Filter by model
+            if model and entry.get("model") != model:
+                continue
+
+            # Filter by time range
+            ts = entry.get("timestamp", "")
+            if time_from and ts < time_from:
+                continue
+            if time_to and ts > time_to:
+                continue
+
+            # Full-text search (lazy — reads content from disk)
+            if search and not self._entry_matches_search(i, search):
+                continue
+
+            results.append((entry, i))
+
+        return results
+
+    def _entry_matches_search(self, entry_id: int, search_term: str) -> bool:
+        """Check if an entry's content matches the search term (case-insensitive)."""
+        term = search_term.lower()
+
+        # Check messages
+        if entry_id in self._entry_messages_hash:
+            messages = self._messages_store[self._entry_messages_hash[entry_id]]
+            if self._search_in_messages(messages, term):
+                return True
+
+        # Check system prompts
+        if entry_id in self._entry_system_hash:
+            system = self._system_store[self._entry_system_hash[entry_id]]
+            if self._search_in_content(system, term):
+                return True
+
+        # Check tools (names)
+        if entry_id in self._entry_tools_hash:
+            tools = self._tools_store[self._entry_tools_hash[entry_id]]
+            for tool in tools:
+                if isinstance(tool, dict) and term in tool.get("name", "").lower():
+                    return True
+
+        # Check response content by reading full entry from disk
+        full_entry = self.get_entry(entry_id)
+        if full_entry:
+            response = full_entry.get("response", {})
+            if isinstance(response, dict):
+                content = response.get("content", [])
+                if self._search_in_content(content, term):
+                    return True
+
+        return False
+
+    @staticmethod
+    def _search_in_messages(messages: list, term: str) -> bool:
+        """Search for term in message content."""
+        for msg in messages:
+            if not isinstance(msg, dict):
+                continue
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                if term in content.lower():
+                    return True
+            elif isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict):
+                        text = block.get("text", "") or block.get("content", "")
+                        if isinstance(text, str) and term in text.lower():
+                            return True
+        return False
+
+    @staticmethod
+    def _search_in_content(content, term: str) -> bool:
+        """Search for term in a list of content blocks or a string."""
+        if isinstance(content, str):
+            return term in content.lower()
+        if isinstance(content, list):
+            for block in content:
+                if isinstance(block, str):
+                    if term in block.lower():
+                        return True
+                elif isinstance(block, dict):
+                    text = block.get("text", "") or block.get("content", "")
+                    if isinstance(text, str) and term in text.lower():
+                        return True
+        return False
 
     def get_entry(self, entry_id: int) -> Optional[dict]:
         """

@@ -23,7 +23,7 @@ def index():
 
 @app.route("/api/entries")
 def api_entries():
-    """Return paginated entry summaries."""
+    """Return paginated entry summaries with optional filtering."""
     try:
         page = int(request.args.get("page", 1))
         per_page = int(request.args.get("per_page", 50))
@@ -35,8 +35,26 @@ def api_entries():
     if per_page < 1 or per_page > 200:
         per_page = 50
 
-    result = parser.get_index(page=page, per_page=per_page)
+    model = request.args.get("model") or None
+    time_from = request.args.get("time_from") or None
+    time_to = request.args.get("time_to") or None
+    search = request.args.get("search") or None
+
+    result = parser.get_index(
+        page=page,
+        per_page=per_page,
+        model=model,
+        time_from=time_from,
+        time_to=time_to,
+        search=search,
+    )
     return jsonify(result)
+
+
+@app.route("/api/models")
+def api_models():
+    """Return distinct model names for filter dropdowns."""
+    return jsonify({"models": parser.get_all_models()})
 
 
 @app.route("/api/entries/<int:entry_id>")

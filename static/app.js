@@ -206,6 +206,8 @@ document.addEventListener("DOMContentLoaded", () => {
             renderRequestComparison(currentEntry);
         } else if (activeTab === "copilot-response") {
             renderCopilotResponse(currentEntry, tabContent, escapeHtml);
+        } else if (activeTab === "tools") {
+            renderToolsTab(currentEntry, tabContent, escapeHtml);
         } else {
             const pre = document.createElement("pre");
             pre.className = "raw-json";

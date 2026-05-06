@@ -159,3 +159,104 @@ function renderCopilotResponse(entry, tabContent, escapeHtml) {
 
     tabContent.replaceChildren(container);
 }
+
+/**
+ * Render the Tools tab — deduplicated tool definitions as collapsible blocks.
+ */
+function renderToolsTab(entry, tabContent, escapeHtml) {
+    const container = document.createElement("div");
+    container.className = "tools-tab";
+
+    const tools = (entry.anthropicRequest && entry.anthropicRequest.tools) || [];
+
+    // Deduplicate by tool name (keep first occurrence)
+    const seen = new Set();
+    const uniqueTools = [];
+    for (const tool of tools) {
+        const key = tool.name || "";
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueTools.push(tool);
+        }
+    }
+
+    // Header with count
+    const header = document.createElement("div");
+    header.className = "tools-tab-header";
+    header.innerHTML = `<span class="tools-count">${uniqueTools.length} tool${uniqueTools.length !== 1 ? "s" : ""}</span>`;
+    container.appendChild(header);
+
+    // Toggle button
+    const toggleBtn = document.createElement("button");
+    toggleBtn.className = "btn btn-secondary raw-json-toggle";
+    toggleBtn.textContent = "Show Raw JSON";
+    let showingRaw = false;
+    header.appendChild(toggleBtn);
+
+    // Formatted view
+    const formattedView = document.createElement("div");
+    formattedView.className = "tools-formatted";
+
+    if (uniqueTools.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "placeholder";
+        empty.textContent = "No tools defined for this entry.";
+        formattedView.appendChild(empty);
+    } else {
+        for (const tool of uniqueTools) {
+            const details = document.createElement("details");
+            details.className = "tool-block";
+
+            const summary = document.createElement("summary");
+            summary.className = "tool-block-summary";
+            summary.textContent = tool.name || "(unnamed)";
+            details.appendChild(summary);
+
+            const body = document.createElement("div");
+            body.className = "tool-block-body";
+
+            if (tool.description) {
+                const desc = document.createElement("div");
+                desc.className = "tool-description";
+                desc.textContent = tool.description;
+                body.appendChild(desc);
+            }
+
+            if (tool.input_schema) {
+                const schemaLabel = document.createElement("div");
+                schemaLabel.className = "tool-schema-label";
+                schemaLabel.textContent = "Input Schema";
+                body.appendChild(schemaLabel);
+
+                const schemaPre = document.createElement("pre");
+                schemaPre.className = "tool-schema";
+                schemaPre.textContent = JSON.stringify(tool.input_schema, null, 2);
+                body.appendChild(schemaPre);
+            }
+
+            details.appendChild(body);
+            formattedView.appendChild(details);
+        }
+    }
+
+    container.appendChild(formattedView);
+
+    // Raw JSON view
+    const rawView = document.createElement("div");
+    rawView.className = "raw-json-view";
+    rawView.style.display = "none";
+    const pre = document.createElement("pre");
+    pre.className = "raw-json";
+    pre.textContent = JSON.stringify(tools, null, 2);
+    rawView.appendChild(pre);
+    container.appendChild(rawView);
+
+    toggleBtn.addEventListener("click", () => {
+        showingRaw = !showingRaw;
+        formattedView.style.display = showingRaw ? "none" : "block";
+        rawView.style.display = showingRaw ? "block" : "none";
+        toggleBtn.textContent = showingRaw ? "Show Formatted" : "Show Raw JSON";
+    });
+
+    tabContent.replaceChildren(container);
+}

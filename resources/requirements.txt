@@ -1,0 +1,81 @@
+This is the requirements doc for the Adapter log viewer.
+
+# Log File Structure
+- The log is a JSONL file (one JSON object per line). Refer to `resources/logs.jsonl` for an example.
+- Each log entry represents one request–response round-trip through the Adapter and contains these top-level fields:
+  - `timestamp` (string, ISO 8601) — when the request was made.
+  - `streaming` (boolean) — whether the request uses streaming.
+  - `anthropicRequest` (object) — the request in Anthropic API format.
+  - `openaiRequest` (object) — the same request translated to OpenAI API format.
+  - `copilotResponse` (string) — the raw SSE (Server-Sent Events) stream returned to the client.
+- **anthropicRequest** notable sub-fields: `model`, `messages`, `system` (list of system prompt segments, may include `cache_control`), `tools`, `metadata`, `max_tokens`, `temperature`, `thinking`, `context_management`, `stream`.
+- **openaiRequest** notable sub-fields: `model`, `messages` (system prompts merged into a single `system` role message), `tools`, `max_tokens`, `temperature`, `stream`, `stream_options`, `reasoning_effort`.
+- **copilotResponse** is a raw SSE string. Each `data: {...}` line contains a JSON payload with `choices[].delta` which may include `content`, `reasoning_text`, and/or `tool_calls`. The stream ends with `data: [DONE]`.
+
+# Requirements
+- For better log viewing experience, we want to open a web page to view Adapter logs.
+- The tool should handle **large log files** (thousands of entries) using server-side pagination and lazy loading — entries are fetched on demand rather than all loaded at once.
+- The tool should support **file upload via the browser UI**, allowing users to load different log files without restarting the server.
+- The tool should support **filtering** log entries by:
+  - Timestamp / time range.
+  - Model name (e.g. `claude-opus-4.6`, `claude-haiku-4.5`).
+  - Message role (`user`, `assistant`, `system`, `tool`).
+- The tool should support **full-text search** across message content, system prompts, tool names, and response content.
+- The tool should support **exporting** filtered log entries to a new JSONL file.
+- **Tool calls rendering**: `tool_use` / `tool_result` pairs should be rendered as collapsible structured blocks showing tool name, input parameters, and result — not plain JSON text.
+- **Formatted view by default**: All tabs (Request Comparison, Copilot Response, Tools, System Prompts) display content in a human-friendly formatted layout. Each formatted tab includes a **"Show Raw JSON"** toggle button that switches between the formatted view and the raw JSON data for that tab's content. The **Raw JSON** tab shows the complete unformatted entry.
+- **Error handling**: Invalid JSONL files or malformed entries should display a clear error message rather than crash. Partially valid files should load successfully with malformed entries flagged.
+
+# Implementation
+- Use Flask as the web framework to serve the viewer page and API endpoints.
+- Use vanilla JavaScript (or a lightweight library) to build the sidebar list, tabs, and detail panels. No heavy table libraries needed.
+- Use Python's built-in `json` module to read and write JSONL files.
+- Create Flask API routes to handle log data retrieval, filtering, and exporting.
+- Use AJAX for filter/search requests so the page does not reload.
+- Implement **server-side pagination**: the backend reads and indexes log entries lazily, serving pages of results to the frontend on demand.
+- Provide a **file upload endpoint** that accepts JSONL files from the browser and loads them as the active dataset.
+
+# Architecture
+- The web page layout uses a **two-panel design**:
+  - **Left sidebar** — a scrollable list of log entries, each showing summary info:
+    - Log number (1-indexed sequential ID).
+    - Timestamp.
+    - Model name.
+    - Message count (number of messages in the conversation).
+    - Tools count (number of tool definitions).
+    - Total entry size (in KB/MB), keep two decimal places.
+  - **Filter panel above the sidebar** — a collapsible panel with:
+    - Model dropdown filter.
+    - Timestamp / time range picker.
+    - Full-text search box.
+    - File upload button (to load a new JSONL file).
+    - Export button (to download filtered entries as JSONL).
+  - **Right panel** — the detail view for the selected log entry, containing 5 tabs:
+    - **Request Comparison** — shows Anthropic Request and OpenAI Request side by side in split windows as **conversation thread views** (role labels + content blocks), allowing users to compare how the same messages are represented in both formats.
+    - **Copilot Response** — merged SSE response with reasoning and content separated.
+    - **Tools** — deduplicated tool definitions.
+    - **System Prompts** — Anthropic system prompt entries with cache_control annotations.
+    - **Raw JSON** — the complete log entry displayed in formatted/pretty-printed JSON for inspection and debugging.
+- Clicking an entry in the left sidebar loads its details in the right panel.
+- The **Tools tab** displays the tool definitions for the selected entry. Since most tools are identical across log entries, show the shared tools once and highlight any differences.
+- **System prompt deduplication**: The system prompt content is identical between Anthropic and OpenAI formats — in Anthropic it is split into multiple `system` array entries (some with `cache_control`), while in OpenAI it is a single `system` role message. The System Prompts tab shows the Anthropic format as the canonical source.
+- **Response content merging**: The `copilotResponse` SSE stream contains fragmented deltas (`choices[].delta.content` and `choices[].delta.reasoning_text`). Parse and concatenate these fragments to display the full response text. Show `reasoning_text` (thinking/reasoning) separately from the final `content`.
+- **Thinking content merging**: In `anthropicRequest.messages`, when `role == "assistant"`, the content blocks often contain interleaved `thinking` and `text` fragments (streaming artifacts). Concatenate all `thinking` blocks into a single readable section and all `text` blocks into a single section, displayed separately. The thinking section should be visually distinct (e.g. collapsible, italic, or muted color) from the main assistant text.
+- **Shared content optimization**: Use a hash map to deduplicate content that is repeated across log entries:
+  - **Tool definitions**: Most entries share identical tool arrays. Store unique tool sets by hash and reference them, rather than loading duplicates into memory.
+  - **Messages**: System prompts, assistant messages, and user messages are often duplicated across entries (e.g. system prompts are identical in consecutive requests within a session). Deduplicate using content hashes to reduce memory footprint.
+  - This approach allows the viewer to efficiently handle large log files where 90%+ of the content is repeated.
+
+# Details to Consider
+- Tool definitions (`tools` array) can be very large (60+ tools with full schemas). They should be collapsible/hidden by default and expandable on demand.
+- Messages in `anthropicRequest` use structured content (list of typed blocks: `text`, `tool_use`, `tool_result`), while `openaiRequest` messages use simpler string content with separate `tool` role messages. The viewer should present both formats clearly.
+- **Message styling**: Use distinct light background colors to differentiate message roles in the conversation thread view (e.g. light blue for user, light green for assistant, light gray for system/tool). This makes conversation flow easy to scan.
+- Some entries include `thinking` configuration (`budget_tokens`, `type`) and `reasoning_text` in the response — these should be clearly labeled.
+- `metadata` contains identifiers like `device_id`, `session_id` — consider using `session_id` to group related requests in the same conversation.
+
+# Non-goals
+- No real-time log tailing / live watching.
+- No editing or modifying log files.
+- No multi-file comparison (load one file at a time).
+- No authentication or multi-user support.
+

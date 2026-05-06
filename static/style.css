@@ -36,10 +36,97 @@ html, body {
     background: #fafafa;
 }
 
-.filter-panel h2 {
+.filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.filter-header h2 {
     font-size: 14px;
     font-weight: 600;
+}
+
+.filter-toggle-icon {
+    font-size: 12px;
+    color: #666;
+    transition: transform 0.2s;
+}
+
+.filter-panel.collapsed .filter-toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.filter-body {
+    margin-top: 10px;
+}
+
+.filter-panel.collapsed .filter-body {
+    display: none;
+}
+
+.filter-row {
     margin-bottom: 8px;
+}
+
+.filter-row label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #666;
+    margin-bottom: 3px;
+}
+
+.filter-row select,
+.filter-row input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    background: #fff;
+}
+
+.filter-row select:focus,
+.filter-row input:focus {
+    outline: none;
+    border-color: #4a90d9;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.btn {
+    flex: 1;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: #4a90d9;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #3a7bc8;
+}
+
+.btn-secondary {
+    background: #e8e8e8;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background: #d8d8d8;
 }
 
 .entry-list {

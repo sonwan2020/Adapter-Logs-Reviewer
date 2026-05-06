@@ -11,6 +11,104 @@ document.addEventListener("DOMContentLoaded", () => {
     let selectedId = null;
     let loading = false;
 
+    // Filter elements
+    const filterPanel = document.querySelector(".filter-panel");
+    const filterToggle = document.getElementById("filter-toggle");
+    const filterModel = document.getElementById("filter-model");
+    const filterTimeFrom = document.getElementById("filter-time-from");
+    const filterTimeTo = document.getElementById("filter-time-to");
+    const filterSearch = document.getElementById("filter-search");
+    const btnUpload = document.getElementById("btn-upload");
+    const btnExport = document.getElementById("btn-export");
+
+    // Collapsible filter panel
+    filterToggle.addEventListener("click", () => {
+        filterPanel.classList.toggle("collapsed");
+    });
+
+    // Populate models dropdown
+    async function loadModels() {
+        try {
+            const resp = await fetch("/api/models");
+            if (!resp.ok) return;
+            const models = await resp.json();
+            models.forEach((m) => {
+                const opt = document.createElement("option");
+                opt.value = m;
+                opt.textContent = m;
+                filterModel.appendChild(opt);
+            });
+        } catch (err) {
+            console.error("Failed to load models:", err);
+        }
+    }
+
+    function getFilterParams() {
+        const params = new URLSearchParams();
+        params.set("page", currentPage);
+        params.set("per_page", perPage);
+        if (filterModel.value) params.set("model", filterModel.value);
+        if (filterTimeFrom.value) params.set("time_from", filterTimeFrom.value);
+        if (filterTimeTo.value) params.set("time_to", filterTimeTo.value);
+        if (filterSearch.value.trim()) params.set("search", filterSearch.value.trim());
+        return params.toString();
+    }
+
+    function resetAndReload() {
+        currentPage = 1;
+        totalEntries = 0;
+        entryList.querySelectorAll(".entry-item").forEach((el) => el.remove());
+        loadMoreBtn.style.display = "block";
+        loadMoreBtn.textContent = "Load More";
+        loadEntries();
+    }
+
+    // Filter change handlers
+    filterModel.addEventListener("change", resetAndReload);
+    filterTimeFrom.addEventListener("change", resetAndReload);
+    filterTimeTo.addEventListener("change", resetAndReload);
+
+    // Debounced search
+    let searchTimeout = null;
+    filterSearch.addEventListener("input", () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(resetAndReload, 300);
+    });
+
+    // Upload
+    btnUpload.addEventListener("click", () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".jsonl";
+        input.addEventListener("change", async () => {
+            if (!input.files.length) return;
+            const formData = new FormData();
+            formData.append("file", input.files[0]);
+            try {
+                const resp = await fetch("/api/upload", { method: "POST", body: formData });
+                if (!resp.ok) throw new Error(resp.statusText);
+                // Reload models and entries
+                filterModel.innerHTML = '<option value="">All Models</option>';
+                await loadModels();
+                resetAndReload();
+            } catch (err) {
+                console.error("Upload failed:", err);
+                alert("Upload failed: " + err.message);
+            }
+        });
+        input.click();
+    });
+
+    // Export
+    btnExport.addEventListener("click", () => {
+        const params = new URLSearchParams();
+        if (filterModel.value) params.set("model", filterModel.value);
+        if (filterTimeFrom.value) params.set("time_from", filterTimeFrom.value);
+        if (filterTimeTo.value) params.set("time_to", filterTimeTo.value);
+        if (filterSearch.value.trim()) params.set("search", filterSearch.value.trim());
+        window.location.href = "/api/export?" + params.toString();
+    });
+
     function escapeHtml(str) {
         const div = document.createElement("div");
         div.textContent = str;
@@ -62,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (loading) return;
         loading = true;
         try {
-            const resp = await fetch(`/api/entries?page=${currentPage}&per_page=${perPage}`);
+            const resp = await fetch(`/api/entries?${getFilterParams()}`);
             if (!resp.ok) throw new Error(resp.statusText);
             const data = await resp.json();
             totalEntries = data.total;
@@ -109,5 +207,6 @@ document.addEventListener("DOMContentLoaded", () => {
     entryList.appendChild(loadMoreBtn);
 
     // Initial load
+    loadModels();
     loadEntries();
 });

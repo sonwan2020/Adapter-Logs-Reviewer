@@ -11,8 +11,34 @@
         <!-- Left sidebar: filter panel + entry list -->
         <aside class="sidebar">
             <div class="filter-panel">
-                <h2>Filters</h2>
-                <!-- Filter controls will be added in later tasks -->
+                <div class="filter-header" id="filter-toggle">
+                    <h2>Filters</h2>
+                    <span class="filter-toggle-icon">▾</span>
+                </div>
+                <div class="filter-body" id="filter-body">
+                    <div class="filter-row">
+                        <label for="filter-model">Model</label>
+                        <select id="filter-model">
+                            <option value="">All Models</option>
+                        </select>
+                    </div>
+                    <div class="filter-row">
+                        <label for="filter-time-from">From</label>
+                        <input type="datetime-local" id="filter-time-from">
+                    </div>
+                    <div class="filter-row">
+                        <label for="filter-time-to">To</label>
+                        <input type="datetime-local" id="filter-time-to">
+                    </div>
+                    <div class="filter-row">
+                        <label for="filter-search">Search</label>
+                        <input type="text" id="filter-search" placeholder="Full-text search...">
+                    </div>
+                    <div class="filter-actions">
+                        <button id="btn-upload" class="btn btn-secondary" title="Upload JSONL file">Upload</button>
+                        <button id="btn-export" class="btn btn-primary" title="Export filtered JSONL">Export</button>
+                    </div>
+                </div>
             </div>
             <div class="entry-list">
                 <!-- Log entries will be populated via JS -->

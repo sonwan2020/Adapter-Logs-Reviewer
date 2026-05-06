@@ -425,3 +425,37 @@ html, body {
     max-height: 600px;
     overflow-y: auto;
 }
+
+/* ===== Copilot Response Tab ===== */
+
+.copilot-response-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.copilot-response-formatted {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.copilot-content-section,
+.copilot-tool-calls-section {
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    background: #e8f8e8;
+}
+
+.copilot-tool-calls-section {
+    background: #fafafa;
+}
+
+.section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 8px;
+}
